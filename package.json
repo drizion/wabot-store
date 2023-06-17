@@ -1,10 +1,10 @@
 {
-  "name": "@ookamiiixd/baileys-store",
-  "version": "1.0.0-beta.1",
+  "name": "@drizion/wabot-store",
+  "version": "1.0.0-beta.2",
   "description": "Minimal Baileys data storage for your favorite DBMS built with Prisma",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "repository": "https://github.com/ookamiiixd/baileys-store.git",
+  "repository": "https://github.com/drizion/wabot-store.git",
   "author": "Royhan (https://github.com/ookamiiixd)",
   "license": "MIT",
   "scripts": {
