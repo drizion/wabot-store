@@ -1,4 +1,8 @@
-import type { AuthenticationCreds, SignalDataTypeMap } from '@whiskeysockets/baileys';
+import type {
+  AuthenticationCreds,
+  SignalDataTypeMap,
+  SignalKeyStore,
+} from '@whiskeysockets/baileys';
 import { proto } from '@whiskeysockets/baileys';
 import { BufferJSON, initAuthCreds } from '@whiskeysockets/baileys';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
@@ -55,36 +59,38 @@ export async function useSession(sessionId: string) {
 
   const creds: AuthenticationCreds = (await read('creds')) || initAuthCreds();
 
+  const keys: SignalKeyStore = {
+    get: async (type, ids) => {
+      const data: { [key: string]: SignalDataTypeMap[typeof type] } = {};
+      await Promise.all(
+        ids.map(async (id) => {
+          let value = await read(`${type}-${id}`);
+          if (type === 'app-state-sync-key' && value) {
+            value = proto.Message.AppStateSyncKeyData.fromObject(value);
+          }
+          data[id] = value;
+        })
+      );
+      return data;
+    },
+    set: async (data: any) => {
+      const tasks: Promise<void>[] = [];
+
+      for (const category in data) {
+        for (const id in data[category]) {
+          const value = data[category][id];
+          const sId = `${category}-${id}`;
+          tasks.push(value ? write(value, sId) : del(sId));
+        }
+      }
+      await Promise.all(tasks);
+    },
+  };
+
   return {
     state: {
       creds,
-      keys: {
-        get: async (type: keyof SignalDataTypeMap, ids: string[]) => {
-          const data: { [key: string]: SignalDataTypeMap[typeof type] } = {};
-          await Promise.all(
-            ids.map(async (id) => {
-              let value = await read(`${type}-${id}`);
-              if (type === 'app-state-sync-key' && value) {
-                value = proto.Message.AppStateSyncKeyData.fromObject(value);
-              }
-              data[id] = value;
-            })
-          );
-          return data;
-        },
-        set: async (data: any) => {
-          const tasks: Promise<void>[] = [];
-
-          for (const category in data) {
-            for (const id in data[category]) {
-              const value = data[category][id];
-              const sId = `${category}-${id}`;
-              tasks.push(value ? write(value, sId) : del(sId));
-            }
-          }
-          await Promise.all(tasks);
-        },
-      },
+      keys,
     },
     saveCreds: () => write(creds, 'creds'),
   };
